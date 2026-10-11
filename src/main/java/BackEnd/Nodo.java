@@ -1,25 +1,21 @@
 package BackEnd;
 
 /**
- * Cápsula de la pila: guarda una caja y un "cable" (referencia)
- * que apunta al nodo de la caja que está debajo.
+Barrutieta Nulutagua Juan Alexadner
+Alcala Bejarano Jennifer Paola
  */
 public class Nodo {
 
-    private Cajas caja;
-    private Nodo siguiente; // la caja de abajo
+    private final Caja caja; // el dato (record) que guarda este vagón
+    private Nodo siguiente;  // enganche al próximo nodo (null si es el último)
 
-    public Nodo(Cajas caja) {
+    public Nodo(Caja caja) {
         this.caja = caja;
         this.siguiente = null;
     }
 
-    public Cajas getCaja() {
+    public Caja getCaja() {
         return caja;
-    }
-
-    public void setCaja(Cajas caja) {
-        this.caja = caja;
     }
 
     public Nodo getSiguiente() {
