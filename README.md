@@ -1,13 +1,13 @@
-# Almacén de Cajas – Pila (Stack) en Java
+# Almacén de Cajas – Lista Bidireccional en Java
 
-Pila LIFO implementada desde cero con nodos enlazados (sin `ArrayList` ni colecciones de Java) y una interfaz gráfica Swing hecha con el diseñador de NetBeans.
+TDA Lista Doblemente Enlazada implementada desde cero con nodos (`primero`, `ultimo`, `siguiente`, `anterior`), sin `ArrayList` ni colecciones de Java, con una interfaz gráfica Swing.
 
 ## Estructura
 
-- `BackEnd/Cajas.java` – objeto caja (código, contenido, peso)
-- `BackEnd/Nodo.java` – nodo que guarda una caja y apunta a la de abajo
-- `BackEnd/PilaCajas.java` – operaciones `push`, `pop`, `peek`, `clear`
-- `FrontEnd/GUICajas.java` / `.form` – ventana con formulario y dibujo de la torre
+- `BackEnd/Caja.java` – record inmutable de la caja (código, contenido, peso)
+- `BackEnd/Nodo.java` – nodo con la caja y enlaces `siguiente` y `anterior`
+- `BackEnd/ListaCajas.java` – insertar, remover y mostrar (principio, final, posición), buscar por código o posición, vaciar
+- `FrontEnd/GUICajas.java` – ventana con formulario, botones, tabla y recorrido adelante / atrás
 
 ## Ejecutar
 

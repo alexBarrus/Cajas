@@ -30,7 +30,7 @@ Alcala Bejarano Jennifer Paola
  */
 
 /**
- * Ventana del Almacén de Cajas (Lista Unidireccional).
+ * Ventana del Almacén de Cajas (Lista Bidireccional).
  * Izquierda: formulario y botones. Derecha: tabla y dibujo de los enlaces.
  * La ventana solo llama a métodos públicos de ListaCajas; no toca los enlaces.
  */
@@ -57,9 +57,13 @@ public class GUICajas extends JFrame {
     };
     private final JTable tabla = new JTable(modeloTabla);
     private final JTextArea txtEnlaces = new JTextArea(5, 40);
+    private final JScrollPane scrollTabla = new JScrollPane(tabla);
+
+    // Sentido en que se recorre la lista para llenar la tabla
+    private boolean haciaAdelante = true;
 
     public GUICajas() {
-        super("Almacén de Cajas - Lista Unidireccional");
+        super("Almacén de Cajas - Lista Bidireccional");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         JPanel izquierda = new JPanel();
@@ -77,22 +81,24 @@ public class GUICajas extends JFrame {
                 boton("Al principio", e -> mostrar(Donde.PRINCIPIO)),
                 boton("Al final", e -> mostrar(Donde.FINAL)),
                 boton("En posición", e -> mostrar(Donde.POSICION))));
-        izquierda.add(crearFilaBotones("Otros",
-                boton("Buscar por código", e -> buscar()),
+        izquierda.add(crearFilaBotones("Buscar",
+                boton("Por código", e -> buscar()),
+                boton("Por posición", e -> buscarPorPosicion())));
+        izquierda.add(crearFilaBotones("Recorrer",
+                boton("Adelante →", e -> recorrer(true)),
+                boton("← Atrás", e -> recorrer(false)),
                 boton("Vaciar lista", e -> vaciar())));
         lblTotal.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         izquierda.add(lblTotal);
         izquierda.add(Box.createVerticalGlue());
 
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        JScrollPane scrollTabla = new JScrollPane(tabla);
-        scrollTabla.setBorder(BorderFactory.createTitledBorder("Contenido de la lista"));
 
         txtEnlaces.setEditable(false);
         txtEnlaces.setLineWrap(true);
         txtEnlaces.setFont(new Font("Monospaced", Font.PLAIN, 13));
         JScrollPane scrollEnlaces = new JScrollPane(txtEnlaces);
-        scrollEnlaces.setBorder(BorderFactory.createTitledBorder("Enlaces (primero → siguiente → ... → null)"));
+        scrollEnlaces.setBorder(BorderFactory.createTitledBorder("Enlaces dobles (siguiente → / ← anterior)"));
 
         JSplitPane derecha = new JSplitPane(JSplitPane.VERTICAL_SPLIT, scrollTabla, scrollEnlaces);
         derecha.setResizeWeight(0.7);
@@ -101,7 +107,7 @@ public class GUICajas extends JFrame {
         getContentPane().add(izquierda, BorderLayout.WEST);
         getContentPane().add(derecha, BorderLayout.CENTER);
 
-        setSize(950, 560);
+        setSize(1000, 620);
         setLocationRelativeTo(null);
         actualizarVista();
     }
@@ -229,6 +235,30 @@ public class GUICajas extends JFrame {
         }
     }
 
+    private void buscarPorPosicion() {
+        if (avisarSiVacia()) {
+            return;
+        }
+        Integer pos = leerPosicion();
+        if (pos == null) {
+            return;
+        }
+        try {
+            ListaCajas.ResultadoBusqueda r = lista.buscarPorPosicion(pos);
+            mostrarCaja("Caja encontrada en la posición " + r.posicion(), r.caja(), r.posicion());
+        } catch (IndexOutOfBoundsException ex) {
+            error("Posición fuera de rango", ex.getMessage());
+        }
+    }
+
+    private void recorrer(boolean adelante) {
+        if (avisarSiVacia()) {
+            return;
+        }
+        haciaAdelante = adelante;
+        actualizarVista();
+    }
+
     private void vaciar() {
         if (avisarSiVacia()) {
             return;
@@ -305,30 +335,63 @@ public class GUICajas extends JFrame {
 
     // ===================== Refresco de la vista =====================
 
-    /** Recorre la lista desde primero y redibuja la tabla, los enlaces y el total. */
+    /**
+     * Redibuja la tabla en el sentido elegido (desde primero o desde ultimo),
+     * el diagrama de enlaces en ambos sentidos y el total.
+     */
     private void actualizarVista() {
         modeloTabla.setRowCount(0);
-        StringBuilder enlaces = new StringBuilder("primero → ");
-
-        Nodo actual = lista.getPrimero();
-        int posicion = 0;
-        while (actual != null) {
-            Caja c = actual.getCaja();
-            modeloTabla.addRow(new Object[]{posicion, c.codigo(), c.contenido(), String.format("%.2f", c.peso())});
-            enlaces.append("[").append(c.codigo()).append("] → ");
-            actual = actual.getSiguiente();
-            posicion++;
+        if (haciaAdelante) {
+            Nodo actual = lista.getPrimero();
+            int posicion = 0;
+            while (actual != null) {
+                agregarFila(posicion, actual.getCaja());
+                actual = actual.getSiguiente();
+                posicion++;
+            }
+        } else {
+            Nodo actual = lista.getUltimo();
+            int posicion = lista.getTamanio() - 1;
+            while (actual != null) {
+                agregarFila(posicion, actual.getCaja());
+                actual = actual.getAnterior();
+                posicion--;
+            }
         }
-        enlaces.append("null");
+        scrollTabla.setBorder(BorderFactory.createTitledBorder(haciaAdelante
+                ? "Contenido de la lista (adelante: primero → ultimo)"
+                : "Contenido de la lista (atrás: ultimo → primero)"));
 
-        txtEnlaces.setText(enlaces.toString());
+        StringBuilder adelante = new StringBuilder("Adelante:  primero → ");
+        Nodo actual = lista.getPrimero();
+        while (actual != null) {
+            adelante.append("[").append(actual.getCaja().codigo()).append("] → ");
+            actual = actual.getSiguiente();
+        }
+        adelante.append("null");
+
+        StringBuilder atras = new StringBuilder("Atrás:     ultimo → ");
+        actual = lista.getUltimo();
+        while (actual != null) {
+            atras.append("[").append(actual.getCaja().codigo()).append("] → ");
+            actual = actual.getAnterior();
+        }
+        atras.append("null");
+
+        txtEnlaces.setText(adelante + "\n" + atras);
         lblTotal.setText(String.format("Cajas: %d   |   Peso total: %.2f kg",
                 lista.getTamanio(), lista.pesoTotal()));
     }
 
+    private void agregarFila(int posicion, Caja c) {
+        modeloTabla.addRow(new Object[]{posicion, c.codigo(), c.contenido(), String.format("%.2f", c.peso())});
+    }
+
     private void mostrarCaja(String titulo, Caja caja, int posicion) {
-        tabla.setRowSelectionInterval(posicion, posicion);
-        tabla.scrollRectToVisible(tabla.getCellRect(posicion, 0, true));
+        // si la tabla está al revés, la posición 0 es la última fila
+        int fila = haciaAdelante ? posicion : lista.getTamanio() - 1 - posicion;
+        tabla.setRowSelectionInterval(fila, fila);
+        tabla.scrollRectToVisible(tabla.getCellRect(fila, 0, true));
         info(titulo, caja.toString());
     }
 

@@ -6,8 +6,9 @@ Alcala Bejarano Jennifer Paola
  */
 
 /**
- * TDA Lista Unidireccional (simplemente enlazada) de cajas.
- * Las posiciones empiezan en 0: la caja apuntada por "primero" es la posición 0.
+ * TDA Lista Bidireccional (doblemente enlazada) de cajas.
+ * Cada nodo apunta a su siguiente y a su anterior; la lista guarda los dos
+ * extremos: "primero" (posición 0) y "ultimo" (posición tamanio - 1).
  */
 public class ListaCajas {
 
@@ -16,10 +17,12 @@ public class ListaCajas {
     }
 
     private Nodo primero; // cabeza de la lista (null si está vacía)
+    private Nodo ultimo;  // cola de la lista (null si está vacía)
     private int tamanio;  // cuántos nodos hay
 
     public ListaCajas() {
         primero = null;
+        ultimo = null;
         tamanio = 0;
     }
 
@@ -27,8 +30,14 @@ public class ListaCajas {
 
     public void insertarAlPrincipio(Caja caja) {
         Nodo nuevo = new Nodo(caja);
-        nuevo.setSiguiente(primero); // el nuevo apunta a la antigua cabeza
-        primero = nuevo;             // y ahora él es la cabeza
+        if (estaVacia()) {
+            primero = nuevo; // el único nodo es primero y último a la vez
+            ultimo = nuevo;
+        } else {
+            nuevo.setSiguiente(primero); // el nuevo apunta a la antigua cabeza
+            primero.setAnterior(nuevo);  // la antigua cabeza apunta de regreso al nuevo
+            primero = nuevo;             // y ahora él es la cabeza
+        }
         tamanio++;
     }
 
@@ -36,12 +45,11 @@ public class ListaCajas {
         Nodo nuevo = new Nodo(caja);
         if (estaVacia()) {
             primero = nuevo;
+            ultimo = nuevo;
         } else {
-            Nodo actual = primero;
-            while (actual.getSiguiente() != null) { // avanzar hasta el último
-                actual = actual.getSiguiente();
-            }
-            actual.setSiguiente(nuevo);
+            nuevo.setAnterior(ultimo);  // el nuevo apunta hacia atrás a la antigua cola
+            ultimo.setSiguiente(nuevo); // la antigua cola apunta hacia adelante al nuevo
+            ultimo = nuevo;             // ya no hay que recorrer: tenemos "ultimo"
         }
         tamanio++;
     }
@@ -56,10 +64,17 @@ public class ListaCajas {
             insertarAlPrincipio(caja);
             return;
         }
-        Nodo anterior = nodoEn(posicion - 1);
+        if (posicion == tamanio) {
+            insertarAlFinal(caja);
+            return;
+        }
+        Nodo actual = nodoEn(posicion);      // el que hoy ocupa esa posición
+        Nodo previo = actual.getAnterior();
         Nodo nuevo = new Nodo(caja);
-        nuevo.setSiguiente(anterior.getSiguiente()); // 1) el nuevo apunta al que estaba en esa posición
-        anterior.setSiguiente(nuevo);                // 2) el anterior apunta al nuevo
+        nuevo.setAnterior(previo);  // 1) el nuevo apunta a sus dos vecinos
+        nuevo.setSiguiente(actual);
+        previo.setSiguiente(nuevo); // 2) los vecinos apuntan al nuevo
+        actual.setAnterior(nuevo);
         tamanio++;
     }
 
@@ -72,6 +87,11 @@ public class ListaCajas {
         }
         Nodo eliminado = primero;
         primero = eliminado.getSiguiente(); // la cabeza pasa al segundo nodo
+        if (primero == null) {
+            ultimo = null;                  // era el único nodo
+        } else {
+            primero.setAnterior(null);      // la nueva cabeza no tiene anterior
+        }
         eliminado.setSiguiente(null);       // aislamos el nodo removido
         tamanio--;
         return eliminado.getCaja();
@@ -82,17 +102,16 @@ public class ListaCajas {
         if (estaVacia()) {
             return null;
         }
-        if (primero.getSiguiente() == null) { // solo hay un nodo
-            return removerAlPrincipio();
+        Nodo eliminado = ultimo;
+        ultimo = eliminado.getAnterior(); // la cola pasa al penúltimo, sin recorrer
+        if (ultimo == null) {
+            primero = null;               // era el único nodo
+        } else {
+            ultimo.setSiguiente(null);    // la nueva cola no tiene siguiente
         }
-        Nodo penultimo = primero;
-        while (penultimo.getSiguiente().getSiguiente() != null) {
-            penultimo = penultimo.getSiguiente();
-        }
-        Caja caja = penultimo.getSiguiente().getCaja();
-        penultimo.setSiguiente(null); // el penúltimo pasa a ser el último
+        eliminado.setAnterior(null);      // aislamos el nodo removido
         tamanio--;
-        return caja;
+        return eliminado.getCaja();
     }
 
     public Caja removerEnPosicion(int posicion) {
@@ -100,10 +119,16 @@ public class ListaCajas {
         if (posicion == 0) {
             return removerAlPrincipio();
         }
-        Nodo anterior = nodoEn(posicion - 1);
-        Nodo eliminado = anterior.getSiguiente();
-        anterior.setSiguiente(eliminado.getSiguiente()); // puenteamos: anterior -> subsiguiente
-        eliminado.setSiguiente(null);                    // aislamos el nodo removido
+        if (posicion == tamanio - 1) {
+            return removerAlFinal();
+        }
+        Nodo eliminado = nodoEn(posicion);
+        Nodo previo = eliminado.getAnterior();
+        Nodo posterior = eliminado.getSiguiente();
+        previo.setSiguiente(posterior); // puenteamos en ambos sentidos:
+        posterior.setAnterior(previo);  // previo ⇄ posterior
+        eliminado.setSiguiente(null);   // aislamos el nodo removido
+        eliminado.setAnterior(null);
         tamanio--;
         return eliminado.getCaja();
     }
@@ -115,14 +140,7 @@ public class ListaCajas {
     }
 
     public Caja mostrarAlFinal() {
-        if (estaVacia()) {
-            return null;
-        }
-        Nodo actual = primero;
-        while (actual.getSiguiente() != null) {
-            actual = actual.getSiguiente();
-        }
-        return actual.getCaja();
+        return estaVacia() ? null : ultimo.getCaja();
     }
 
     public Caja mostrarEnPosicion(int posicion) {
@@ -130,7 +148,7 @@ public class ListaCajas {
         return nodoEn(posicion).getCaja();
     }
 
-    // ===================== BUSCAR POR VALOR =====================
+    // ===================== BUSCAR =====================
 
     /** Busca por código (sin distinguir mayúsculas). Devuelve null si no existe. */
     public ResultadoBusqueda buscarPorCodigo(String codigo) {
@@ -146,10 +164,17 @@ public class ListaCajas {
         return null;
     }
 
+    /** Busca por índice; recorre desde el extremo más cercano. */
+    public ResultadoBusqueda buscarPorPosicion(int posicion) {
+        validarPosicionExistente(posicion);
+        return new ResultadoBusqueda(nodoEn(posicion).getCaja(), posicion);
+    }
+
     // ===================== AUXILIARES =====================
 
     public void vaciar() {
-        primero = null; // sin referencia a la cabeza, el recolector libera los nodos
+        primero = null; // sin referencias a los extremos, el recolector libera los nodos
+        ultimo = null;
         tamanio = 0;
     }
 
@@ -161,9 +186,14 @@ public class ListaCajas {
         return tamanio;
     }
 
-    /** Para que la vista pueda recorrer la lista sin modificarla. */
+    /** Para que la vista pueda recorrer la lista hacia adelante sin modificarla. */
     public Nodo getPrimero() {
         return primero;
+    }
+
+    /** Para que la vista pueda recorrer la lista hacia atrás sin modificarla. */
+    public Nodo getUltimo() {
+        return ultimo;
     }
 
     public double pesoTotal() {
@@ -176,11 +206,22 @@ public class ListaCajas {
         return total;
     }
 
-    /** Avanza "posicion" saltos desde primero. Supone que la posición ya es válida. */
+    /**
+     * Devuelve el nodo en "posicion" partiendo del extremo más cercano:
+     * si está en la primera mitad avanza desde primero, si no retrocede desde ultimo.
+     * Supone que la posición ya es válida.
+     */
     private Nodo nodoEn(int posicion) {
-        Nodo actual = primero;
-        for (int i = 0; i < posicion; i++) {
-            actual = actual.getSiguiente();
+        if (posicion < tamanio / 2) {
+            Nodo actual = primero;
+            for (int i = 0; i < posicion; i++) {
+                actual = actual.getSiguiente();
+            }
+            return actual;
+        }
+        Nodo actual = ultimo;
+        for (int i = tamanio - 1; i > posicion; i--) {
+            actual = actual.getAnterior();
         }
         return actual;
     }
